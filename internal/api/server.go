@@ -2,9 +2,9 @@ package api
 
 import (
 	"database/sql"
-	"log"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/krios2146/currency-exchange-api-go/internal/handler"
 	"github.com/krios2146/currency-exchange-api-go/internal/store"
@@ -44,6 +44,7 @@ func (s *Server) Run() {
 	}
 
 	if err := httpServer.ListenAndServe(); err != nil {
-		log.Fatal(err.Error())
+		slog.Error(err.Error())
+		os.Exit(1)
 	}
 }
