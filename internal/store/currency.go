@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 
 	"github.com/krios2146/currency-exchange-api-go/internal/model"
@@ -10,6 +11,8 @@ import (
 type CurrencyStore struct {
 	db *sql.DB
 }
+
+var NotFoundError error = errors.New("Currency not found")
 
 func NewCurrencyStore(db *sql.DB) *CurrencyStore {
 	return &CurrencyStore{
@@ -41,4 +44,23 @@ func (s *CurrencyStore) FindAll() ([]model.Currency, error) {
 	}
 
 	return currencies, nil
+}
+
+func (s *CurrencyStore) FindByCode(code string) (*model.Currency, error) {
+	row := s.db.QueryRow("SELECT * FROM Currencies WHERE code = ?;", code)
+
+	var currency model.Currency
+
+	err := row.Scan(&currency.Id, &currency.Code, &currency.FullName, &currency.Sign)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, NotFoundError
+	}
+
+	if err != nil {
+		slog.Error("Unable to map row to model", "error", err)
+		return nil, err
+	}
+
+	return &currency, nil
 }

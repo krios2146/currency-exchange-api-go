@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/krios2146/currency-exchange-api-go/internal/response"
 	"github.com/krios2146/currency-exchange-api-go/internal/store"
@@ -41,6 +43,46 @@ func (c *CurrencyHandler) GetCurrencyByCode(w http.ResponseWriter, r *http.Reque
 
 	slog.Debug("GET /currency/{code} was called with", "code", code)
 
+	if len(code) == 0 {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code is not present in the request"})
+		return
+	}
+
+	if len(code) != 3 {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code must contain exactly 3 letters as defined in ISO 4217"})
+		return
+	}
+
+	if code != strings.ToUpper(code) {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code must contain exactly 3 uppercase letters as defined in ISO 4217"})
+		return
+	}
+
+	currency, err := c.store.FindByCode(code)
+
+	if errors.Is(err, store.NotFoundError) {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(currency)
 }
 
 func (c *CurrencyHandler) AddCurrency(w http.ResponseWriter, r *http.Request) {
