@@ -16,6 +16,8 @@ type CurrencyStore struct {
 var CurrencyNotFoundError error = errors.New("Currency not found")
 var CurrencyAlreadyExistsError error = errors.New("Currency already exists")
 
+var cache = make(map[int64]model.Currency)
+
 func NewCurrencyStore(db *sql.DB) *CurrencyStore {
 	return &CurrencyStore{
 		db: db,
@@ -63,6 +65,31 @@ func (s *CurrencyStore) FindByCode(code string) (*model.Currency, error) {
 		slog.Error("Unable to map row to model", "error", err)
 		return nil, err
 	}
+
+	return &currency, nil
+}
+
+func (s *CurrencyStore) FindById(id int64) (*model.Currency, error) {
+	if currency, exists := cache[id]; exists {
+		return &currency, nil
+	}
+
+	row := s.db.QueryRow("SELECT * FROM Currencies WHERE id = ?;", id)
+
+	var currency model.Currency
+
+	err := row.Scan(&currency.Id, &currency.Code, &currency.FullName, &currency.Sign)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, CurrencyNotFoundError
+	}
+
+	if err != nil {
+		slog.Error("Unable to map row to model", "error", err)
+		return nil, err
+	}
+
+	cache[id] = currency
 
 	return &currency, nil
 }
