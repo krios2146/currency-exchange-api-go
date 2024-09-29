@@ -13,8 +13,8 @@ type CurrencyStore struct {
 	db *sql.DB
 }
 
-var NotFoundError error = errors.New("Currency not found")
-var AlreadyExistsError error = errors.New("Currency already exists")
+var CurrencyNotFoundError error = errors.New("Currency not found")
+var CurrencyAlreadyExistsError error = errors.New("Currency already exists")
 
 func NewCurrencyStore(db *sql.DB) *CurrencyStore {
 	return &CurrencyStore{
@@ -56,7 +56,7 @@ func (s *CurrencyStore) FindByCode(code string) (*model.Currency, error) {
 	err := row.Scan(&currency.Id, &currency.Code, &currency.FullName, &currency.Sign)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, NotFoundError
+		return nil, CurrencyNotFoundError
 	}
 
 	if err != nil {
@@ -78,7 +78,7 @@ func (s *CurrencyStore) Save(name string, code string, sign string) (*model.Curr
 
 	var sqliteErr sqlite3.Error
 	if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-		return nil, AlreadyExistsError
+		return nil, CurrencyAlreadyExistsError
 	}
 
 	if err != nil {

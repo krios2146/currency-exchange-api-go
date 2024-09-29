@@ -66,7 +66,7 @@ func (c *CurrencyHandler) GetCurrencyByCode(w http.ResponseWriter, r *http.Reque
 
 	currency, err := c.store.FindByCode(code)
 
-	if errors.Is(err, store.NotFoundError) {
+	if errors.Is(err, store.CurrencyNotFoundError) {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
@@ -132,7 +132,7 @@ func (c *CurrencyHandler) AddCurrency(w http.ResponseWriter, r *http.Request) {
 
 	currency, err := c.store.Save(name, code, sign)
 
-	if errors.Is(err, store.AlreadyExistsError) {
+	if errors.Is(err, store.CurrencyAlreadyExistsError) {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
