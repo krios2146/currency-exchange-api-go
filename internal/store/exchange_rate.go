@@ -38,7 +38,8 @@ func (s *ExchangeRateStore) FindAll() ([]model.ExchangeRate, error) {
 			&exchangeRate.Id,
 			&exchangeRate.BaseCurrencyId,
 			&exchangeRate.TargetCurrencyId,
-			&exchangeRate.Rate)
+			&exchangeRate.Rate,
+		)
 
 		if err != nil {
 			slog.Error("Unable to map row to model", "error", err)
@@ -49,4 +50,34 @@ func (s *ExchangeRateStore) FindAll() ([]model.ExchangeRate, error) {
 	}
 
 	return exchangeRates, nil
+}
+
+func (s *ExchangeRateStore) FindByCurrencyCodes(baseCurrencyCode string, targetCurrencyCode string) (*model.ExchangeRate, error) {
+	row := s.db.QueryRow(
+		`SELECT er.id, er.base_currency_id, er.target_currency_id, er.rate FROM Exchange_rates er
+		JOIN Currencies bc ON bc.id = er.base_currency_id
+		JOIN Currencies tc ON tc.id = er.target_currency_id
+		WHERE bc.code = ? AND tc.code = ?`,
+		baseCurrencyCode, targetCurrencyCode,
+	)
+
+	var exchangeRate model.ExchangeRate
+
+	err := row.Scan(
+		&exchangeRate.Id,
+		&exchangeRate.BaseCurrencyId,
+		&exchangeRate.TargetCurrencyId,
+		&exchangeRate.Rate,
+	)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ExchangeRateNotFoundError
+	}
+
+	if err != nil {
+		slog.Error("Unable to map row to model", "error", err)
+		return nil, err
+	}
+
+	return &exchangeRate, nil
 }
