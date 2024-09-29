@@ -5,10 +5,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/krios2146/currency-exchange-api-go/internal/response"
 	"github.com/krios2146/currency-exchange-api-go/internal/store"
+	"github.com/krios2146/currency-exchange-api-go/internal/validator"
 )
 
 type CurrencyHandler struct {
@@ -43,24 +43,10 @@ func (c *CurrencyHandler) GetCurrencyByCode(w http.ResponseWriter, r *http.Reque
 
 	slog.Debug("GET /currency/{code} was called with", "code", code)
 
-	if len(code) == 0 {
+	if err := validator.ValidateCurrencyCode(code); err != nil {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code is not present in the request"})
-		return
-	}
-
-	if len(code) != 3 {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code must contain exactly 3 letters as defined in ISO 4217"})
-		return
-	}
-
-	if code != strings.ToUpper(code) {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code must contain exactly 3 uppercase letters as defined in ISO 4217"})
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -105,22 +91,11 @@ func (c *CurrencyHandler) AddCurrency(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency name is not present in the request"})
 		return
 	}
-	if len(code) == 0 {
+
+	if err := validator.ValidateCurrencyCode(code); err != nil {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code is not present in the request"})
-		return
-	}
-	if len(code) != 3 {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code must contain exactly 3 letters as defined in ISO 4217"})
-		return
-	}
-	if code != strings.ToUpper(code) {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Currency code must contain exactly 3 uppercase letters as defined in ISO 4217"})
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
 		return
 	}
 	if len(sign) == 0 {
