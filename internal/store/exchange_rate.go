@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/krios2146/currency-exchange-api-go/internal/model"
+	"github.com/mattn/go-sqlite3"
 )
 
 type ExchangeRateStore struct {
@@ -72,6 +73,35 @@ func (s *ExchangeRateStore) FindByCurrencyCodes(baseCurrencyCode string, targetC
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ExchangeRateNotFoundError
+	}
+
+	if err != nil {
+		slog.Error("Unable to map row to model", "error", err)
+		return nil, err
+	}
+
+	return &exchangeRate, nil
+}
+
+func (s *ExchangeRateStore) Save(baseCurrencyId int64, targetCurrencyId int64, rate float64) (*model.ExchangeRate, error) {
+	row := s.db.QueryRow(
+		`INSERT INTO Exchange_rates (base_currency_id, target_currency_id, rate) VALUES (?, ?, ?)
+		RETURNING id, base_currency_id, target_currency_id, rate`,
+		baseCurrencyId, targetCurrencyId, rate,
+	)
+
+	var exchangeRate model.ExchangeRate
+
+	err := row.Scan(
+		&exchangeRate.Id,
+		&exchangeRate.BaseCurrencyId,
+		&exchangeRate.TargetCurrencyId,
+		&exchangeRate.Rate,
+	)
+
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+		return nil, ExchangeRateAlreadyExistsError
 	}
 
 	if err != nil {

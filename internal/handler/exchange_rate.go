@@ -3,8 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/krios2146/currency-exchange-api-go/internal/response"
 	"github.com/krios2146/currency-exchange-api-go/internal/store"
@@ -125,5 +127,103 @@ func (c *ExchangeRateHandler) GetExchangeRateByCodes(w http.ResponseWriter, r *h
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(exchangeRateResponse)
+}
+
+func (c *ExchangeRateHandler) AddExchangeRate(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("POST /exchangeRates was called")
+
+	if err := r.ParseForm(); err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	baseCurrencyCode := r.Form.Get("baseCurrencyCode")
+	targetCurrencyCode := r.Form.Get("targetCurrencyCode")
+	rateStr := r.Form.Get("rate")
+	rate, err := strconv.ParseFloat(rateStr, 64)
+
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: fmt.Sprintf("Couldn't parse rate from '%s'", rateStr)})
+		return
+	}
+
+	if err := validator.ValidateCurrencyCode(baseCurrencyCode); err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
+		return
+	}
+	if err := validator.ValidateCurrencyCode(targetCurrencyCode); err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	if rate <= 0 {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: "Rate cannot be negative or zero"})
+		return
+	}
+
+	baseCurrency, berr := c.currencyStore.FindByCode(baseCurrencyCode)
+	targetCurrency, terr := c.currencyStore.FindByCode(targetCurrencyCode)
+
+	if errors.Is(berr, store.CurrencyNotFoundError) {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: berr.Error()})
+		return
+	}
+	if berr != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: berr.Error()})
+		return
+	}
+	if errors.Is(terr, store.CurrencyNotFoundError) {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: terr.Error()})
+		return
+	}
+	if berr != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: berr.Error()})
+		return
+	}
+
+	exchangeRate, err := c.exchangeRateStore.Save(baseCurrency.Id, targetCurrency.Id, rate)
+
+	if errors.Is(err, store.ExchangeRateAlreadyExistsError) {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	exchangeRateResponse := response.ExchangeRate{
+		Id:             exchangeRate.Id,
+		BaseCurrency:   *baseCurrency,
+		TargetCurrency: *targetCurrency,
+		Rate:           exchangeRate.Rate,
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(exchangeRateResponse)
 }
