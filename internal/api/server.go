@@ -35,6 +35,8 @@ func (s *Server) Run() {
 	exchangeRatesStore := store.NewExchangeRateStore(s.db)
 	exchangeRatesHander := handler.NewExchangeRateHandler(exchangeRatesStore, currencyStore)
 
+	exchangeHandler := handler.NewExchangeHandler(exchangeRatesStore, currencyStore)
+
 	mux.HandleFunc("GET /currencies", currencyHandler.GetAllCurrencies)
 	mux.HandleFunc("GET /currency/{code}", currencyHandler.GetCurrencyByCode)
 	mux.HandleFunc("GET /currency/", currencyHandler.GetCurrencyByCode)
@@ -44,6 +46,8 @@ func (s *Server) Run() {
 	mux.HandleFunc("GET /exchangeRate/{code_pair}", exchangeRatesHander.GetExchangeRateByCodes)
 	mux.HandleFunc("POST /exchangeRates", exchangeRatesHander.AddExchangeRate)
 	mux.HandleFunc("PATCH /exchangeRate/{code_pair}", exchangeRatesHander.UpdateExchangeRate)
+
+	mux.HandleFunc("GET /exchange", exchangeHandler.Exchange)
 
 	slog.Info("Starting server")
 
