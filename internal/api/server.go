@@ -43,6 +43,7 @@ func (s *Server) Run() {
 	mux.HandleFunc("GET /exchangeRates", exchangeRatesHander.GetAllExchangeRates)
 	mux.HandleFunc("GET /exchangeRate/{code_pair}", exchangeRatesHander.GetExchangeRateByCodes)
 	mux.HandleFunc("POST /exchangeRates", exchangeRatesHander.AddExchangeRate)
+	mux.HandleFunc("PATCH /exchangeRate/{code_pair}", exchangeRatesHander.UpdateExchangeRate)
 
 	slog.Info("Starting server")
 

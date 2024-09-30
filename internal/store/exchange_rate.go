@@ -111,3 +111,33 @@ func (s *ExchangeRateStore) Save(baseCurrencyId int64, targetCurrencyId int64, r
 
 	return &exchangeRate, nil
 }
+
+func (s *ExchangeRateStore) Update(baseCurrencyId int64, targetCurrencyId int64, rate float64) (*model.ExchangeRate, error) {
+	row := s.db.QueryRow(
+		`UPDATE Exchange_rates
+		SET rate = ?
+		WHERE base_currency_id = ? AND target_currency_id = ?
+		RETURNING id, base_currency_id, target_currency_id, rate`,
+		rate, baseCurrencyId, targetCurrencyId,
+	)
+
+	var exchangeRate model.ExchangeRate
+
+	err := row.Scan(
+		&exchangeRate.Id,
+		&exchangeRate.BaseCurrencyId,
+		&exchangeRate.TargetCurrencyId,
+		&exchangeRate.Rate,
+	)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ExchangeRateNotFoundError
+	}
+
+	if err != nil {
+		slog.Error("Unable to map row to model", "error", err)
+		return nil, err
+	}
+
+	return &exchangeRate, nil
+}
