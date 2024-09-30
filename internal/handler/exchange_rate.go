@@ -193,10 +193,10 @@ func (c *ExchangeRateHandler) AddExchangeRate(w http.ResponseWriter, r *http.Req
 		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: terr.Error()})
 		return
 	}
-	if berr != nil {
+	if terr != nil {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: berr.Error()})
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: terr.Error()})
 		return
 	}
 
@@ -273,19 +273,6 @@ func (c *ExchangeRateHandler) UpdateExchangeRate(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := validator.ValidateCurrencyCode(baseCurrencyCode); err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
-		return
-	}
-	if err := validator.ValidateCurrencyCode(targetCurrencyCode); err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: err.Error()})
-		return
-	}
-
 	if rate <= 0 {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -314,10 +301,10 @@ func (c *ExchangeRateHandler) UpdateExchangeRate(w http.ResponseWriter, r *http.
 		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: terr.Error()})
 		return
 	}
-	if berr != nil {
+	if terr != nil {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: berr.Error()})
+		json.NewEncoder(w).Encode(&response.ErrorResponse{Message: terr.Error()})
 		return
 	}
 
